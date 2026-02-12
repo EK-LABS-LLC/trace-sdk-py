@@ -19,7 +19,18 @@ license = { text = "MIT" }
 [tool.hatch.build]
 packages = ["src/pulse_sdk"]
 
+[dependency-groups]
+dev = [
+    "anthropic>=0.79.0",
+    "openai>=2.20.0",
+    "pytest>=9.0.2",
+    "python-dotenv>=1.0.1",
+    "fastapi>=0.115.5",
+    "uvicorn>=0.32.0",
+]
+
 [project.optional-dependencies]
 dev = [
   "black>=26.1.0",
+  "pytest>=8.3.0",
 ]

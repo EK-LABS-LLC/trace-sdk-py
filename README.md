@@ -80,3 +80,20 @@ All `chat.completions.create` / `messages.create` calls support:
 - Python 3.10+
 - `requests`
 - Corresponding provider SDK (`openai`, `anthropic`) for the helpers you use.
+
+## Tests
+
+```bash
+uv run pytest
+```
+
+### Live integration check
+
+To manually exercise the SDK against real providers, run:
+
+```bash
+uv run python tests/test_server.py openai
+uv run python tests/test_server.py anthropic
+```
+
+Set `PULSE_API_KEY` and the relevant provider key (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`) before running. The script makes a single completion request and relies on `observe()` to push traces to your trace-service instance.
