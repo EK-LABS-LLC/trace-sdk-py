@@ -18,7 +18,9 @@ def current_timestamp() -> str:
     return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
 
 
-def extract_pulse_params(payload: Dict[str, Any]) -> tuple[Dict[str, Any], Optional[str], Optional[Dict[str, Any]]]:
+def extract_pulse_params(
+    payload: Dict[str, Any],
+) -> tuple[Dict[str, Any], Optional[str], Optional[Dict[str, Any]]]:
     clean = copy.deepcopy(payload)
     session = None
     metadata = None
@@ -36,8 +38,12 @@ def extract_pulse_params(payload: Dict[str, Any]) -> tuple[Dict[str, Any], Optio
     return clean, session, metadata  # type: ignore[return-value]
 
 
-def resolve_trace_metadata(observe_session: Optional[str], observe_metadata: Optional[Dict[str, Any]],
-                           pulse_session: Optional[str], pulse_metadata: Optional[Dict[str, Any]]) -> tuple[Optional[str], Optional[Dict[str, Any]]]:
+def resolve_trace_metadata(
+    observe_session: Optional[str],
+    observe_metadata: Optional[Dict[str, Any]],
+    pulse_session: Optional[str],
+    pulse_metadata: Optional[Dict[str, Any]],
+) -> tuple[Optional[str], Optional[Dict[str, Any]]]:
     session_id = pulse_session or observe_session
     metadata = observe_metadata.copy() if observe_metadata else None
     if pulse_metadata:
@@ -81,11 +87,10 @@ def build_trace(
 
         if response.cost_cents is not None:
             trace["cost_cents"] = response.cost_cents
-        elif (
-            response.input_tokens is not None
-            and response.output_tokens is not None
-        ):
-            calculated = calculate_cost(response.model, response.input_tokens, response.output_tokens)
+        elif response.input_tokens is not None and response.output_tokens is not None:
+            calculated = calculate_cost(
+                response.model, response.input_tokens, response.output_tokens
+            )
             if calculated is not None:
                 trace["cost_cents"] = calculated
     else:

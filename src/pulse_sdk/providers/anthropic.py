@@ -6,7 +6,12 @@ from typing import Any, Dict
 
 from ..normalize import normalize_anthropic_response
 from ..state import add_to_buffer, is_enabled
-from ..trace import build_error_trace, build_trace, extract_pulse_params, resolve_trace_metadata
+from ..trace import (
+    build_error_trace,
+    build_trace,
+    extract_pulse_params,
+    resolve_trace_metadata,
+)
 from ..types import ObserveOptions, Provider
 
 

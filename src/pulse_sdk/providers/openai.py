@@ -6,7 +6,12 @@ from typing import Any, Dict
 
 from ..normalize import normalize_openai_response
 from ..state import add_to_buffer, is_enabled
-from ..trace import build_error_trace, build_trace, extract_pulse_params, resolve_trace_metadata
+from ..trace import (
+    build_error_trace,
+    build_trace,
+    extract_pulse_params,
+    resolve_trace_metadata,
+)
 from ..types import ObserveOptions, Provider
 
 
@@ -14,7 +19,9 @@ class OpenAIIntegrationError(RuntimeError):
     pass
 
 
-def observe_openai(client: Any, provider: Provider, options: ObserveOptions | None = None) -> Any:
+def observe_openai(
+    client: Any, provider: Provider, options: ObserveOptions | None = None
+) -> Any:
     if provider not in (Provider.OPENAI, Provider.OPENROUTER):
         raise ValueError("Provider must be openai or openrouter for observe_openai")
 

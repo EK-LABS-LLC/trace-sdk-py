@@ -19,7 +19,9 @@ def send_traces(api_url: str, api_key: str, traces: List[Trace]) -> None:
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
-    response = requests.post(url, headers=headers, data=json.dumps(traces), timeout=DEFAULT_TIMEOUT)
+    response = requests.post(
+        url, headers=headers, data=json.dumps(traces), timeout=DEFAULT_TIMEOUT
+    )
     if not response.ok:
         raise RuntimeError(
             f"Pulse SDK: failed to send traces ({response.status_code}): {response.text}"

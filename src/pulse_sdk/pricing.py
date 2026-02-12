@@ -104,7 +104,9 @@ def _resolve_model(model: str) -> Optional[ModelPricing]:
     return None
 
 
-def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> Optional[float]:
+def calculate_cost(
+    model: str, input_tokens: int, output_tokens: int
+) -> Optional[float]:
     pricing = _resolve_model(model)
     if not pricing:
         return None

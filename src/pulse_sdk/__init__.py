@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from .config import load_config
 from .providers import observe_anthropic, observe_openai
-from .state import flush_buffer, reset_state, set_config, start_flush_worker, stop_flush_worker
+from .state import (
+    flush_buffer,
+    reset_state,
+    set_config,
+    start_flush_worker,
+    stop_flush_worker,
+)
 from .types import ObserveOptions, Provider, PulseConfig
 
 
