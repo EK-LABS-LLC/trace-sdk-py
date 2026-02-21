@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pulse-sdk"
-version = "0.2.3"
+name = "pulse-trace-sdk"
+version = "0.2.4"
 description = "Pulse Python SDK for tracing LLM providers"
 readme = "README.md"
 requires-python = ">=3.10"

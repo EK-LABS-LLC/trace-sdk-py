@@ -7,7 +7,7 @@ Python client helpers for Pulse trace ingestion. Wrap your LLM provider SDK (Ope
 Install from PyPI:
 
 ```bash
-pip install pulse-sdk
+pip install pulse-trace-sdk
 ```
 
 For local development:
