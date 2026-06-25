@@ -9,6 +9,10 @@ version_from_pyproject() {
   ' "$1"
 }
 
+latest_tag_version() {
+  git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1 | sed 's/^v//'
+}
+
 version_gt() {
   local current="$1"
   local base="$2"
@@ -38,17 +42,12 @@ version_gt() {
   (( 10#$current_patch > 10#$base_patch ))
 }
 
-base_ref="${BASE_REF:-origin/${GITHUB_BASE_REF:-main}}"
 current_version="$(version_from_pyproject pyproject.toml)"
-base_pyproject="$(mktemp)"
-trap 'rm -f "$base_pyproject"' EXIT
+latest_release_version="$(latest_tag_version)"
 
-git show "$base_ref:pyproject.toml" > "$base_pyproject"
-base_version="$(version_from_pyproject "$base_pyproject")"
-
-if ! version_gt "$current_version" "$base_version"; then
-  echo "::error::Python SDK version must be bumped above $base_version before merging this PR. Current version is $current_version." >&2
+if [[ -n "$latest_release_version" ]] && ! version_gt "$current_version" "$latest_release_version"; then
+  echo "::error::Python SDK version must be bumped above latest release v$latest_release_version before merging this PR. Current version is $current_version." >&2
   exit 1
 fi
 
-echo "Python SDK version bump OK: $base_version -> $current_version."
+echo "Python SDK version OK: latest release v$latest_release_version -> $current_version."
