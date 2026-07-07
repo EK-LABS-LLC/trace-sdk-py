@@ -44,7 +44,19 @@ def observe_anthropic(client: Any, options: ObserveOptions | None = None) -> Any
         request_payload: Dict[str, Any] = copy.deepcopy(clean_payload)
 
         observe_session = options.session_id if options else None
-        observe_metadata = options.metadata if options else None
+        observe_metadata = (
+            options.metadata.copy() if options and options.metadata else None
+        )
+        if options and options.session_name:
+            observe_metadata = {
+                **(observe_metadata or {}),
+                "pulse.session.name": options.session_name,
+            }
+        if options and options.trace_name:
+            observe_metadata = {
+                **(observe_metadata or {}),
+                "pulse.trace.name": options.trace_name,
+            }
         session_id, metadata = resolve_trace_metadata(
             observe_session,
             observe_metadata,

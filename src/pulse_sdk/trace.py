@@ -11,11 +11,15 @@ from .types import NormalizedResponse, Provider, Trace, TraceStatus
 
 
 def generate_trace_id() -> str:
-    return str(uuid.uuid4())
+    return uuid.uuid4().hex
+
+
+def generate_span_id() -> str:
+    return uuid.uuid4().hex[:16]
 
 
 def current_timestamp() -> str:
-    return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
 def extract_pulse_params(
@@ -23,16 +27,27 @@ def extract_pulse_params(
 ) -> tuple[Dict[str, Any], Optional[str], Optional[Dict[str, Any]]]:
     clean = copy.deepcopy(payload)
     session = None
-    metadata = None
+    metadata: Optional[Dict[str, Any]] = None
 
     for key in ("pulse_session_id", "pulseSessionId"):
         if key in clean:
             session = clean.pop(key)
             break
 
+    for key, metadata_key in (
+        ("pulse_session_name", "pulse.session.name"),
+        ("pulseSessionName", "pulse.session.name"),
+        ("pulse_trace_name", "pulse.trace.name"),
+        ("pulseTraceName", "pulse.trace.name"),
+    ):
+        if key in clean:
+            metadata = {**(metadata or {}), metadata_key: clean.pop(key)}
+
     for key in ("pulse_metadata", "pulseMetadata"):
         if key in clean:
-            metadata = clean.pop(key)
+            pulse_metadata = clean.pop(key)
+            if isinstance(pulse_metadata, dict):
+                metadata = {**(metadata or {}), **pulse_metadata}
             break
 
     return clean, session, metadata  # type: ignore[return-value]
@@ -51,6 +66,10 @@ def resolve_trace_metadata(
     return session_id, metadata
 
 
+def current_time_unix_nano() -> int:
+    return time.time_ns()
+
+
 def build_trace(
     request: Dict[str, Any],
     response: Optional[NormalizedResponse],
@@ -59,9 +78,15 @@ def build_trace(
     session_id: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> Trace:
+    end_time_unix_nano = current_time_unix_nano()
+    duration_unix_nano = max(0, int(round(latency_ms * 1_000_000)))
+    start_time_unix_nano = end_time_unix_nano - duration_unix_nano
     trace: Trace = {
         "trace_id": generate_trace_id(),
+        "span_id": generate_span_id(),
         "timestamp": current_timestamp(),
+        "start_time_unix_nano": str(start_time_unix_nano),
+        "end_time_unix_nano": str(end_time_unix_nano),
         "provider": provider.value,
         "model_requested": str(request.get("model", "unknown")),
         "request_body": request,

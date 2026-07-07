@@ -93,10 +93,10 @@ def find_trace(provider: str, session_id: str) -> Dict[str, Any]:
 def available_providers() -> Dict[str, bool]:
     try:
         return get_test_server_health()
-    except requests.RequestException as exc:
-        raise RuntimeError(
+    except requests.RequestException:
+        pytest.skip(
             f"Test server not reachable at {TEST_SERVER_URL}. Make sure it's running."
-        ) from exc
+        )
 
 
 def test_openai_completion_records_trace(available_providers: Dict[str, bool]) -> None:

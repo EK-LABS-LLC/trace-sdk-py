@@ -18,7 +18,10 @@ class TraceStatus(str, Enum):
 
 class Trace(TypedDict, total=False):
     trace_id: str
+    span_id: str
     timestamp: str
+    start_time_unix_nano: str
+    end_time_unix_nano: str
     provider: str
     model_requested: str
     model_used: Optional[str]
@@ -48,6 +51,8 @@ class PulseConfig(TypedDict, total=False):
 @dataclass
 class ObserveOptions:
     session_id: Optional[str] = None
+    session_name: Optional[str] = None
+    trace_name: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
