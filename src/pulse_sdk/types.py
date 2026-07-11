@@ -37,6 +37,34 @@ class Trace(TypedDict, total=False):
     metadata: Dict[str, Any]
 
 
+class Span(TypedDict, total=False):
+    span_id: str
+    trace_id: str
+    session_id: str
+    parent_span_id: str
+    timestamp: str
+    duration_ms: int
+    source: str
+    kind: str
+    event_type: str
+    status: str
+    tool_use_id: str
+    tool_name: str
+    tool_input: Any
+    tool_response: Any
+    error: Any
+    model: str
+    provider: str
+    model_used: str
+    input_tokens: int
+    output_tokens: int
+    cost_cents: float
+    finish_reason: str
+    output_text: str
+    provider_request_id: str
+    metadata: Dict[str, Any]
+
+
 class PulseConfig(TypedDict, total=False):
     api_key: str
     api_url: str
