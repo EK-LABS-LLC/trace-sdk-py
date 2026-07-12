@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -13,17 +14,22 @@ MAX_PAYLOAD_BYTES = 64 * 1024
 PENDING_TTL_SECONDS = 10 * 60
 
 _pending: Dict[str, Dict[str, Any]] = {}
+_processed_results: Dict[str, float] = {}
+_pending_lock = threading.Lock()
 
 
 def _key(provider: Provider, client_id: str, session_id: str, tool_id: str) -> str:
     return f"{provider.value}:{client_id}:{session_id}:{tool_id}"
 
 
-def _expire() -> None:
+def _expire_locked() -> None:
     now = time.time()
     for key, value in list(_pending.items()):
         if now - float(value["created_at"]) > PENDING_TTL_SECONDS:
             _pending.pop(key, None)
+    for key, created_at in list(_processed_results.items()):
+        if now - created_at > PENDING_TTL_SECONDS:
+            _processed_results.pop(key, None)
 
 
 def resolve_session_id(session_id: Optional[str], fallback: str) -> str:
@@ -37,13 +43,14 @@ def compact_payload(value: Any) -> Any:
         serialized = value if isinstance(value, str) else json.dumps(value, default=str)
     except Exception:
         serialized = str(value)
-    size = len(serialized.encode("utf-8"))
+    encoded = serialized.encode("utf-8")
+    size = len(encoded)
     if size <= MAX_PAYLOAD_BYTES:
         return value
     return {
         "truncated": True,
         "originalBytes": size,
-        "preview": serialized[:MAX_PAYLOAD_BYTES],
+        "preview": encoded[:MAX_PAYLOAD_BYTES].decode("utf-8", errors="ignore"),
     }
 
 
@@ -53,26 +60,35 @@ def correlate_tool_results(
     session_id: str,
     results: List[Dict[str, Any]],
 ) -> Tuple[Optional[str], List[Dict[str, Any]]]:
-    _expire()
     matches = []
-    for result in results:
-        pending = _pending.pop(_key(provider, client_id, session_id, result["id"]), None)
-        if pending:
-            matches.append(
-                {
-                    "result": result,
-                    "trace_id": pending["trace_id"],
-                    "parent_span_id": pending["tool_request_span_id"],
-                    "status": "matched",
-                }
-            )
-        else:
-            matches.append({"result": result, "status": "orphan"})
+    with _pending_lock:
+        _expire_locked()
+        for result in results:
+            key = _key(provider, client_id, session_id, result["id"])
+            if key in _processed_results:
+                continue
+            pending = _pending.pop(key, None)
+            _processed_results[key] = time.time()
+            if pending:
+                matches.append(
+                    {
+                        "result": result,
+                        "trace_id": pending["trace_id"],
+                        "parent_span_id": pending["tool_request_span_id"],
+                        "status": "matched",
+                    }
+                )
+            else:
+                matches.append({"result": result, "status": "orphan"})
 
     trace_ids = {match.get("trace_id") for match in matches if match.get("trace_id")}
-    trace_id = next(iter(trace_ids)) if matches and len(trace_ids) == 1 and all(
-        match["status"] == "matched" for match in matches
-    ) else None
+    trace_id = (
+        next(iter(trace_ids))
+        if matches
+        and len(trace_ids) == 1
+        and all(match["status"] == "matched" for match in matches)
+        else None
+    )
     return trace_id, matches
 
 
@@ -116,7 +132,11 @@ def build_provider_span(
         "kind": "llm_call",
         "event_type": "provider_call",
         "status": status,
-        "model": str(request.get("model")) if request.get("model") else (response.model if response else "unknown"),
+        "model": (
+            str(request.get("model"))
+            if request.get("model")
+            else (response.model if response else "unknown")
+        ),
         "provider": provider.value,
         "metadata": {
             **(metadata or {}),
@@ -181,31 +201,32 @@ def build_tool_request_spans(
     parent_span_id: str,
     tool_calls: List[Dict[str, Any]],
 ) -> List[Span]:
-    _expire()
     spans = []
-    for call in tool_calls:
-        span_id = generate_span_id()
-        _pending[_key(provider, client_id, session_id, call["id"])] = {
-            "trace_id": trace_id,
-            "tool_request_span_id": span_id,
-            "created_at": time.time(),
-        }
-        span: Span = {
-            "span_id": span_id,
-            "trace_id": trace_id,
-            "session_id": session_id,
-            "parent_span_id": parent_span_id,
-            "timestamp": current_timestamp(),
-            "source": "sdk",
-            "kind": "tool_use",
-            "event_type": "tool_request",
-            "status": "success",
-            "tool_use_id": call["id"],
-            "tool_input": compact_payload(call.get("input")),
-        }
-        if call.get("name"):
-            span["tool_name"] = call["name"]
-        spans.append(span)
+    with _pending_lock:
+        _expire_locked()
+        for call in tool_calls:
+            span_id = generate_span_id()
+            _pending[_key(provider, client_id, session_id, call["id"])] = {
+                "trace_id": trace_id,
+                "tool_request_span_id": span_id,
+                "created_at": time.time(),
+            }
+            span: Span = {
+                "span_id": span_id,
+                "trace_id": trace_id,
+                "session_id": session_id,
+                "parent_span_id": parent_span_id,
+                "timestamp": current_timestamp(),
+                "source": "sdk",
+                "kind": "tool_use",
+                "event_type": "tool_request",
+                "status": "success",
+                "tool_use_id": call["id"],
+                "tool_input": compact_payload(call.get("input")),
+            }
+            if call.get("name"):
+                span["tool_name"] = call["name"]
+            spans.append(span)
     return spans
 
 

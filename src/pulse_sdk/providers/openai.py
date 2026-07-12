@@ -101,28 +101,31 @@ def observe_openai(
             raise
 
         latency = (time.perf_counter() - start) * 1000
-        normalized = normalize_openai_response(response)
-        provider_span = build_provider_span(
-            trace_id=trace_id,
-            session_id=session_id,
-            provider=provider,
-            request=request_payload,
-            response=normalized,
-            started_at=started_at,
-            latency_ms=latency,
-            status="success",
-            metadata=metadata,
-        )
-        add_to_buffer(provider_span)
-        for span in build_tool_request_spans(
-            provider=provider,
-            client_id=client_id,
-            trace_id=trace_id,
-            session_id=session_id,
-            parent_span_id=provider_span["span_id"],
-            tool_calls=_extract_chat_tool_calls(response),
-        ):
-            add_to_buffer(span)
+        try:
+            normalized = normalize_openai_response(response)
+            provider_span = build_provider_span(
+                trace_id=trace_id,
+                session_id=session_id,
+                provider=provider,
+                request=request_payload,
+                response=normalized,
+                started_at=started_at,
+                latency_ms=latency,
+                status="success",
+                metadata=metadata,
+            )
+            add_to_buffer(provider_span)
+            for span in build_tool_request_spans(
+                provider=provider,
+                client_id=client_id,
+                trace_id=trace_id,
+                session_id=session_id,
+                parent_span_id=provider_span["span_id"],
+                tool_calls=_extract_chat_tool_calls(response),
+            ):
+                add_to_buffer(span)
+        except Exception:
+            pass
         return response
 
     completions.create = wrapped_create  # type: ignore[assignment]
@@ -135,7 +138,9 @@ def observe_openai(
             if not is_enabled() or args:
                 return original_responses_create(*args, **kwargs)
 
-            clean_payload, pulse_session_id, pulse_metadata = extract_pulse_params(kwargs)
+            clean_payload, pulse_session_id, pulse_metadata = extract_pulse_params(
+                kwargs
+            )
             request_payload = copy.deepcopy(clean_payload)
             observe_session = options.session_id if options else None
             observe_metadata = options.metadata if options else None
@@ -144,7 +149,10 @@ def observe_openai(
             )
             session_id = resolve_session_id(session_id, client_id)
             result_trace_id, result_matches = correlate_tool_results(
-                provider, client_id, session_id, _extract_responses_tool_results(request_payload)
+                provider,
+                client_id,
+                session_id,
+                _extract_responses_tool_results(request_payload),
             )
             trace_id = result_trace_id or generate_trace_id()
             # Tool results were produced before this request, so record them
@@ -175,28 +183,31 @@ def observe_openai(
                 raise
 
             latency = (time.perf_counter() - start) * 1000
-            normalized = _normalize_responses_response(response, request_payload)
-            provider_span = build_provider_span(
-                trace_id=trace_id,
-                session_id=session_id,
-                provider=provider,
-                request=request_payload,
-                response=normalized,
-                started_at=started_at,
-                latency_ms=latency,
-                status="success",
-                metadata=metadata,
-            )
-            add_to_buffer(provider_span)
-            for span in build_tool_request_spans(
-                provider=provider,
-                client_id=client_id,
-                trace_id=trace_id,
-                session_id=session_id,
-                parent_span_id=provider_span["span_id"],
-                tool_calls=_extract_responses_tool_calls(response),
-            ):
-                add_to_buffer(span)
+            try:
+                normalized = _normalize_responses_response(response, request_payload)
+                provider_span = build_provider_span(
+                    trace_id=trace_id,
+                    session_id=session_id,
+                    provider=provider,
+                    request=request_payload,
+                    response=normalized,
+                    started_at=started_at,
+                    latency_ms=latency,
+                    status="success",
+                    metadata=metadata,
+                )
+                add_to_buffer(provider_span)
+                for span in build_tool_request_spans(
+                    provider=provider,
+                    client_id=client_id,
+                    trace_id=trace_id,
+                    session_id=session_id,
+                    parent_span_id=provider_span["span_id"],
+                    tool_calls=_extract_responses_tool_calls(response),
+                ):
+                    add_to_buffer(span)
+            except Exception:
+                pass
             return response
 
         responses.create = wrapped_responses_create  # type: ignore[assignment]
@@ -222,8 +233,14 @@ def _extract_chat_tool_calls(response: Any) -> list[dict[str, Any]]:
 def _extract_chat_tool_results(request: Dict[str, Any]) -> list[dict[str, Any]]:
     results = []
     for message in request.get("messages", []) or []:
-        if isinstance(message, dict) and message.get("role") == "tool" and message.get("tool_call_id"):
-            results.append({"id": message["tool_call_id"], "response": message.get("content")})
+        if (
+            isinstance(message, dict)
+            and message.get("role") == "tool"
+            and message.get("tool_call_id")
+        ):
+            results.append(
+                {"id": message["tool_call_id"], "response": message.get("content")}
+            )
     return results
 
 
@@ -239,7 +256,11 @@ def _extract_responses_tool_calls(response: Any) -> list[dict[str, Any]]:
                     "input": parse_jsonish(getattr(item, "arguments", None)),
                 }
             )
-        elif isinstance(item_type, str) and item_type.endswith("_call") and getattr(item, "id", None):
+        elif (
+            isinstance(item_type, str)
+            and item_type.endswith("_call")
+            and getattr(item, "id", None)
+        ):
             calls.append({"id": getattr(item, "id"), "name": item_type, "input": item})
     return calls
 
