@@ -96,28 +96,31 @@ def observe_anthropic(client: Any, options: ObserveOptions | None = None) -> Any
             raise
 
         latency = (time.perf_counter() - start) * 1000
-        normalized = normalize_anthropic_response(response)
-        provider_span = build_provider_span(
-            trace_id=trace_id,
-            session_id=session_id,
-            provider=Provider.ANTHROPIC,
-            request=request_payload,
-            response=normalized,
-            started_at=started_at,
-            latency_ms=latency,
-            status="success",
-            metadata=metadata,
-        )
-        add_to_buffer(provider_span)
-        for span in build_tool_request_spans(
-            provider=Provider.ANTHROPIC,
-            client_id=client_id,
-            trace_id=trace_id,
-            session_id=session_id,
-            parent_span_id=provider_span["span_id"],
-            tool_calls=_extract_tool_calls(response),
-        ):
-            add_to_buffer(span)
+        try:
+            normalized = normalize_anthropic_response(response)
+            provider_span = build_provider_span(
+                trace_id=trace_id,
+                session_id=session_id,
+                provider=Provider.ANTHROPIC,
+                request=request_payload,
+                response=normalized,
+                started_at=started_at,
+                latency_ms=latency,
+                status="success",
+                metadata=metadata,
+            )
+            add_to_buffer(provider_span)
+            for span in build_tool_request_spans(
+                provider=Provider.ANTHROPIC,
+                client_id=client_id,
+                trace_id=trace_id,
+                session_id=session_id,
+                parent_span_id=provider_span["span_id"],
+                tool_calls=_extract_tool_calls(response),
+            ):
+                add_to_buffer(span)
+        except Exception:
+            pass
         return response
 
     messages.create = wrapped_create  # type: ignore[assignment]
@@ -130,7 +133,7 @@ def _extract_tool_calls(response: Any) -> list[dict[str, Any]]:
         if getattr(block, "type", None) == "tool_use" and getattr(block, "id", None):
             calls.append(
                 {
-                    "id": getattr(block, "id"),
+                    "id": getattr(block, "id", None),
                     "name": getattr(block, "name", None),
                     "input": getattr(block, "input", None),
                 }

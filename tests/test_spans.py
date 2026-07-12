@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 from pulse_sdk.config import ResolvedConfig
+from pulse_sdk.providers.anthropic import observe_anthropic
 from pulse_sdk.providers.openai import observe_openai
 from pulse_sdk.spans import (
     MAX_PAYLOAD_BYTES,
@@ -99,3 +100,27 @@ def test_responses_telemetry_failure_does_not_hide_successful_response(
     observe_openai(client, Provider.OPENAI)
 
     assert client.responses.create(model="test") is response
+
+
+def test_anthropic_telemetry_failure_does_not_hide_successful_response(
+    monkeypatch,
+) -> None:
+    response = object()
+    create = lambda **kwargs: response
+    client = SimpleNamespace(messages=SimpleNamespace(create=create))
+    set_config(
+        ResolvedConfig(
+            api_key="pulse_sk_test",
+            api_url="http://localhost:3000",
+            batch_size=100,
+            flush_interval=5000,
+            enabled=True,
+        )
+    )
+    monkeypatch.setattr(
+        "pulse_sdk.providers.anthropic.normalize_anthropic_response",
+        lambda value: (_ for _ in ()).throw(ValueError("bad telemetry")),
+    )
+    observe_anthropic(client)
+
+    assert client.messages.create(model="test") is response
