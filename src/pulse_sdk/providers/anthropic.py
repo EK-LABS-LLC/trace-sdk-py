@@ -130,7 +130,7 @@ def _extract_tool_calls(response: Any) -> list[dict[str, Any]]:
         if getattr(block, "type", None) == "tool_use" and getattr(block, "id", None):
             calls.append(
                 {
-                    "id": getattr(block, "id"),
+                    "id": getattr(block, "id", None),
                     "name": getattr(block, "name", None),
                     "input": getattr(block, "input", None),
                 }

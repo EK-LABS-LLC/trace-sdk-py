@@ -211,7 +211,7 @@ def _extract_chat_tool_calls(response: Any) -> list[dict[str, Any]]:
             function = getattr(call, "function", None)
             calls.append(
                 {
-                    "id": getattr(call, "id"),
+                    "id": getattr(call, "id", None),
                     "name": getattr(function, "name", None),
                     "input": parse_jsonish(getattr(function, "arguments", None)),
                 }
@@ -234,13 +234,13 @@ def _extract_responses_tool_calls(response: Any) -> list[dict[str, Any]]:
         if item_type == "function_call" and getattr(item, "call_id", None):
             calls.append(
                 {
-                    "id": getattr(item, "call_id"),
+                    "id": getattr(item, "call_id", None),
                     "name": getattr(item, "name", None),
                     "input": parse_jsonish(getattr(item, "arguments", None)),
                 }
             )
         elif isinstance(item_type, str) and item_type.endswith("_call") and getattr(item, "id", None):
-            calls.append({"id": getattr(item, "id"), "name": item_type, "input": item})
+            calls.append({"id": getattr(item, "id", None), "name": item_type, "input": item})
     return calls
 
 

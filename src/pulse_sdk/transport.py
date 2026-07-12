@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import json
 from typing import Any, Dict, List
 
@@ -113,7 +114,5 @@ def _to_otlp_span(span: Span) -> Dict[str, Any]:
 
 
 def _parse_iso_ms(value: str) -> int:
-    import datetime
-
     parsed = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
     return int(parsed.timestamp() * 1000)
