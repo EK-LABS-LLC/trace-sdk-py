@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 import time
 import uuid
 from typing import Any, Dict
@@ -21,6 +22,9 @@ from ..trace import (
     resolve_trace_metadata,
 )
 from ..types import ObserveOptions, Provider
+
+
+logger = logging.getLogger(__name__)
 
 
 class AnthropicIntegrationError(RuntimeError):
@@ -119,8 +123,8 @@ def observe_anthropic(client: Any, options: ObserveOptions | None = None) -> Any
                 tool_calls=_extract_tool_calls(response),
             ):
                 add_to_buffer(span)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Failed to record Anthropic provider telemetry: %s", exc)
         return response
 
     messages.create = wrapped_create  # type: ignore[assignment]
