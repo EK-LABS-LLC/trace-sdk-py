@@ -1,6 +1,9 @@
 # pulse-trace-sdk
 
-Official Python SDK for Pulse trace ingestion.
+Official Python SDK for Pulse trace ingestion. The public `observe()` API records
+supported LLM calls and sends them to Pulse as OTLP HTTP JSON at `POST /v1/traces` —
+one `llm_call` span per provider request plus `tool_use` spans for tool calls, carrying
+provider, model, token, cost, and session attributes.
 
 ## Install
 

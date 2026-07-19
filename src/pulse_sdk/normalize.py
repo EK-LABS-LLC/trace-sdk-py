@@ -72,4 +72,5 @@ def normalize_anthropic_response(response: "Message") -> NormalizedResponse:
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         finish_reason=finish_reason,
+        provider_request_id=getattr(response, "id", None),
     )

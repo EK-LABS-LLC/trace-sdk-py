@@ -5,11 +5,11 @@ import time
 from typing import List
 
 from .config import ResolvedConfig
-from .transport import send_traces
-from .types import Trace
+from .transport import send_spans
+from .types import Span
 
 _config: ResolvedConfig | None = None
-_buffer: List[Trace] = []
+_buffer: List[Span] = []
 _buffer_lock = threading.Lock()
 _flush_thread: threading.Thread | None = None
 _stop_event: threading.Event | None = None
@@ -30,7 +30,7 @@ def is_enabled() -> bool:
     return bool(_config and _config.enabled)
 
 
-def add_to_buffer(trace: Trace) -> None:
+def add_to_buffer(trace: Span) -> None:
     if not is_enabled():
         return
 
@@ -47,7 +47,7 @@ def flush_buffer() -> None:
     if not is_enabled():
         return
 
-    traces: List[Trace]
+    traces: List[Span]
     with _buffer_lock:
         if not _buffer:
             return
@@ -56,7 +56,7 @@ def flush_buffer() -> None:
 
     cfg = get_config()
     try:
-        send_traces(cfg.api_url, cfg.api_key, traces)
+        send_spans(cfg.api_url, cfg.api_key, traces)
     except Exception as exc:
         print(f"Pulse SDK: failed to send traces: {exc}")
 
